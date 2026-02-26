@@ -108,7 +108,3 @@ results/<dataset_slug>/<method_name>/<timestamp>/
 ## 6) Dataset layout contract
 
 See `data/README.md`.
-
-## 7) Method definition
-
-For the exact WPRF definition (Φ/Ω, reachability, losses, inference), see `METHOD.md`.
