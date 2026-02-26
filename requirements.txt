@@ -1,0 +1,17 @@
+# NOTE: PyTorch is intentionally NOT pinned here.
+# Install PyTorch via conda (recommended) or follow https://pytorch.org/ first.
+
+numpy
+scipy
+opencv-python
+pyyaml
+tqdm
+matplotlib
+pycocotools
+segmentation-models-pytorch
+medpy
+huggingface-hub
+filelock
+timm
+transformers
+

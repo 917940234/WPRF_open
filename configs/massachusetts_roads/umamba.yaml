@@ -1,0 +1,40 @@
+exp:
+  type: umamba
+  name: massachusetts_roads_umamba
+  output_dir: results/massachusetts_roads/umamba
+data:
+  dataset_root: data/Massachusetts_Roads/data
+  image_size:
+  - 1024
+  - 1024
+  cache_dir: data/_cache/massachusetts_roads
+runtime:
+  device: cuda
+  limit_cpu_threads: true
+  cpu_threads: 1
+  cv2_threads: 0
+training:
+  num_epochs: 80
+  batch_size: 2
+  num_workers: 12
+  persistent_workers: true
+  prefetch_factor: 4
+  learning_rate: 0.0001
+  weight_decay: 0.01
+  seed: 42
+  grad_clip_norm: 1.0
+  save_checkpoints: true
+infer:
+  tau_u: 0.5
+  tau_link: 0.5
+visualization:
+  num_images: 3
+evaluation:
+  split: test
+  max_images: 3
+  max_instances_per_image: 512
+model:
+  base_channels: 64
+  d_state: 16
+  d_conv: 4
+  expand: 2

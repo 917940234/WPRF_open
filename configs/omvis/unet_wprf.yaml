@@ -1,0 +1,35 @@
+exp:
+  type: unet_wprf
+  name: omvis_unet_wprf
+  output_dir: results/omvis/unet_wprf
+data:
+  dataset_root: data/OMVIS/data
+  image_size:
+  - 1088
+  - 1440
+  cache_dir: data/_cache/omvis
+runtime:
+  device: cuda
+  limit_cpu_threads: true
+  cpu_threads: 1
+  cv2_threads: 0
+training:
+  num_epochs: 300
+  batch_size: 8
+  num_workers: 12
+  persistent_workers: true
+  prefetch_factor: 4
+  learning_rate: 0.0001
+  weight_decay: 0.01
+  seed: 42
+  grad_clip_norm: 1.0
+  save_checkpoints: true
+infer:
+  tau_u: 0.5
+  tau_link: 0.5
+visualization:
+  num_images: 3
+evaluation:
+  split: test
+  max_images: 3
+  max_instances_per_image: 1024

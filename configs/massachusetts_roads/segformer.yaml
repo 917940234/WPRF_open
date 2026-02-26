@@ -1,0 +1,43 @@
+exp:
+  type: segformer
+  name: massachusetts_roads_segformer
+  output_dir: results/massachusetts_roads/segformer
+data:
+  dataset_root: data/Massachusetts_Roads/data
+  image_size:
+  - 1024
+  - 1024
+  cache_dir: data/_cache/massachusetts_roads
+runtime:
+  device: cuda
+  limit_cpu_threads: true
+  cpu_threads: 1
+  cv2_threads: 0
+training:
+  num_epochs: 80
+  batch_size: 1
+  num_workers: 12
+  persistent_workers: true
+  prefetch_factor: 4
+  learning_rate: 0.0001
+  weight_decay: 0.01
+  seed: 42
+  grad_clip_norm: 1.0
+  save_checkpoints: true
+infer:
+  tau_u: 0.5
+  tau_link: 0.5
+visualization:
+  num_images: 3
+evaluation:
+  split: test
+  max_images: 3
+  max_instances_per_image: 512
+model:
+  variant: b1
+  freeze_bn_stats: true
+  # 与 swinunet(pretrained=true) 对齐：SegFormer 使用 HF 预训练初始化。
+  # 若不想触发下载，可改回 null（但在本数据集上 from-scratch 往往会卡在 loss≈0.693）。
+  hf_pretrained_id: nvidia/segformer-b1-finetuned-ade-512-512
+  # 预训练权重建议使用 ImageNet mean/std 归一化（输入张量仍要求为 RGB 且在 [0,1]）。
+  input_norm: imagenet

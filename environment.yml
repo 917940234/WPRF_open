@@ -1,0 +1,13 @@
+name: wprf_open
+channels:
+  - pytorch
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pytorch
+  - torchvision
+  - cpuonly
+  - pip
+  - pip:
+      - -r requirements.txt
+

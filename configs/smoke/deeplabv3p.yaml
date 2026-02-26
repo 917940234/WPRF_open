@@ -1,0 +1,39 @@
+exp:
+  type: deeplabv3p
+  name: smoke_deeplabv3p
+  output_dir: results/_smoke/deeplabv3p
+data:
+  dataset_root: tests/smoke_dataset
+  image_size:
+  - 64
+  - 64
+  cache_dir: tests/smoke_dataset/_cache
+runtime:
+  device: cpu
+  limit_cpu_threads: true
+  cpu_threads: 1
+  cv2_threads: 0
+training:
+  num_epochs: 1
+  batch_size: 1
+  num_workers: 0
+  persistent_workers: false
+  prefetch_factor: 2
+  learning_rate: 0.0001
+  weight_decay: 0.01
+  seed: 123
+  grad_clip_norm: 1.0
+  save_checkpoints: false
+infer:
+  tau_u: 0.5
+  tau_link: 0.5
+visualization:
+  num_images: 1
+evaluation:
+  split: val
+  max_images: 1
+  max_instances_per_image: 16
+model:
+  pretrained: false
+  encoder_weights: null
+  hf_pretrained_id: null

@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Local env
+.env
+.env.*
+venv/
+env/
+
+# Datasets (downloaded locally)
+data/*
+!data/README.md
+
+# Runtime outputs
+results/
+logs/
+tests/smoke_dataset/_cache/
+data/_cache/
+
+# Checkpoints / weights
+*.pt
+*.pth
+*.ckpt
+

@@ -1,0 +1,14 @@
+name: wprf_open_cuda118
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pytorch
+  - torchvision
+  - pytorch-cuda=11.8
+  - pip
+  - pip:
+      - -r requirements.txt
+
