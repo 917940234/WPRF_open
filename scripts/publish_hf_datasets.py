@@ -182,6 +182,7 @@ def _parse_args() -> argparse.Namespace:
         help="可选：源数据所在的项目根目录（包含 data/）。默认使用本仓库根目录。",
     )
     p.add_argument("--work-dir", type=str, default="/tmp/wprf_hf_release", help="临时工作目录（会被覆盖）")
+    p.add_argument("--no-clean-work-dir", action="store_true", help="不清理 work-dir（便于分批打包/上传）")
     p.add_argument("--max-zip-gb", type=float, default=4.0, help="单个 zip 的目标上限（超过则分片）")
     p.add_argument("--dataset", type=str, default="", help="只发布一个数据集（slug），默认发布全部")
     p.add_argument("--pack-only", action="store_true", help="只打包不上传（便于先检查产物）")
@@ -202,7 +203,7 @@ def main() -> None:
             raise SystemExit(f"--source-root 不是有效目录：{source_root}")
 
     work_dir = Path(args.work_dir).expanduser().resolve()
-    if work_dir.exists():
+    if work_dir.exists() and (not bool(args.no_clean_work_dir)):
         shutil.rmtree(work_dir, ignore_errors=True)
     work_dir.mkdir(parents=True, exist_ok=True)
 
