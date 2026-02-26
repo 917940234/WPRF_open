@@ -299,30 +299,39 @@ DATASETS: Dict[str, DatasetSpec] = {
         slug="drive",
         repo_id="youchengzong/wprf-drive",
         default_dataset_root=Path("data/DRIVE/data"),
+        artifacts=(DatasetArtifact(filename="data.zip", sha256="6b4955a33aa0ef183d65239f978c1eeb3a3be99d50fd31fd33b5af7ff2b0b47c"),),
     ),
     "deepcrack": DatasetSpec(
         slug="deepcrack",
         repo_id="youchengzong/wprf-deepcrack",
         default_dataset_root=Path("data/DeepCrack/data"),
+        artifacts=(DatasetArtifact(filename="data.zip", sha256="9494c7e1fd1121236db2083b39f6da288a0d856a5c00e2ddf0dff0abcb16faa0"),),
     ),
     "massachusetts_roads": DatasetSpec(
         slug="massachusetts_roads",
         repo_id="youchengzong/wprf-massachusetts-roads",
         default_dataset_root=Path("data/Massachusetts_Roads/data"),
+        artifacts=(
+            DatasetArtifact(filename="data.zip", sha256="13ab5282c56cb59e4cf039117906d2d8a6f736418af4c1a2394fd49d9b64e30b"),
+            DatasetArtifact(filename="data_part02.zip", sha256="48bb86e8f34adc1c9153d32aabced4f9416324910135b765e40e1391887d7e9a"),
+        ),
     ),
     "octa500_3mm": DatasetSpec(
         slug="octa500_3mm",
         repo_id="youchengzong/wprf-octa500-3mm",
         default_dataset_root=Path("data/OCTA-500/OCTA_3mm/data"),
+        artifacts=(DatasetArtifact(filename="data.zip", sha256="82cce61931d0263f8a7112ded3cc09674b45f9f017f2f7cfcc744bcd6a360a03"),),
     ),
     "octa500_6mm": DatasetSpec(
         slug="octa500_6mm",
         repo_id="youchengzong/wprf-octa500-6mm",
         default_dataset_root=Path("data/OCTA-500/OCTA_6mm/data"),
+        artifacts=(DatasetArtifact(filename="data.zip", sha256="79ecce73b61945f213ae94d66ac1352c40a35586590dbfa6403086cde82e37c0"),),
     ),
     "omvis": DatasetSpec(
         slug="omvis",
         repo_id="youchengzong/wprf-omvis",
         default_dataset_root=Path("data/OMVIS/data"),
+        artifacts=(DatasetArtifact(filename="data.zip", sha256="5d39968d4657b26b0f16fa4f77a63147f6d68eec252ce9ac75bd585ab2f55b85"),),
     ),
 }

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import os
 import shutil
 import sys
@@ -40,6 +41,53 @@ def _sha256(path: Path) -> str:
         for chunk in iter(lambda: f.read(1024 * 1024), b""):
             h.update(chunk)
     return h.hexdigest()
+
+
+def _size_category(num_examples: int) -> str:
+    """
+    Hugging Face Dataset Card size categories:
+    - n<1K, 1K<n<10K, 10K<n<100K, 100K<n<1M, ...
+    """
+    n = int(num_examples)
+    if n < 1_000:
+        return "n<1K"
+    if n < 10_000:
+        return "1K<n<10K"
+    if n < 100_000:
+        return "10K<n<100K"
+    if n < 1_000_000:
+        return "100K<n<1M"
+    if n < 10_000_000:
+        return "1M<n<10M"
+    if n < 100_000_000:
+        return "10M<n<100M"
+    if n < 1_000_000_000:
+        return "100M<n<1B"
+    return "n>1B"
+
+
+def _collect_coco_stats(dataset_root: Path) -> dict:
+    """
+    Best-effort COCO summary for professionalism. This is used in the dataset card body.
+    """
+    stats: dict = {"splits": {}, "total_images": 0, "total_annotations": 0}
+    for split in ("train", "val", "test"):
+        ann = dataset_root / "annotations" / f"instances_{split}.json"
+        if not ann.is_file():
+            continue
+        try:
+            obj = json.loads(ann.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        images_n = len(obj.get("images") or [])
+        anns_n = len(obj.get("annotations") or [])
+        cats_n = len(obj.get("categories") or [])
+        stats["splits"][split] = {"images": int(images_n), "annotations": int(anns_n), "categories": int(cats_n)}
+        stats["total_images"] += int(images_n)
+        stats["total_annotations"] += int(anns_n)
+
+    stats["size_category"] = _size_category(int(stats["total_images"])) if int(stats["total_images"]) > 0 else None
+    return stats
 
 
 def _iter_files(root: Path) -> List[Path]:
@@ -134,19 +182,123 @@ def _write_sha256sums(artifacts: List[Path], out_path: Path) -> None:
     out_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def _dataset_card_text(*, slug: str, repo_id: str) -> str:
-    return (
-        f"# {repo_id}\n\n"
-        f"This repository hosts the processed dataset files for **WPRF_open** (`{slug}`).\n\n"
-        "## Layout\n\n"
-        "After downloading and extracting the zip file(s), the dataset root is:\n\n"
-        "```\n"
-        "<dataset_root>/\n"
-        "  images/{train,val,test}/...\n"
-        "  annotations/instances_{train,val,test}.json\n"
-        "```\n\n"
-        "This dataset is provided for research use. Please check the original dataset license before redistribution.\n"
+def _dataset_card_text(
+    *,
+    slug: str,
+    repo_id: str,
+    artifacts: Optional[List[Tuple[str, str, int]]] = None,
+    coco_stats: Optional[dict] = None,
+) -> str:
+    pretty_names = {
+        "drive": "WPRF - DRIVE (processed)",
+        "deepcrack": "WPRF - DeepCrack (processed)",
+        "massachusetts_roads": "WPRF - Massachusetts Roads (processed)",
+        "octa500_3mm": "WPRF - OCTA-500 3mm (processed)",
+        "octa500_6mm": "WPRF - OCTA-500 6mm (processed)",
+        "omvis": "WPRF - OMVIS (processed)",
+    }
+    pretty_name = pretty_names.get(str(slug).strip().lower(), f"WPRF - {repo_id} (processed)")
+
+    license_tags = {
+        # NOTE: If the original dataset license/terms are unclear, keep it as `other` and
+        # explain the situation in the card body instead of guessing.
+        "drive": "other",
+        "deepcrack": "cc-by-nc-sa-4.0",
+        "massachusetts_roads": "other",
+        "octa500_3mm": "cc-by-nc-nd-4.0",
+        "octa500_6mm": "cc-by-nc-nd-4.0",
+        "omvis": "cc-by-nc-sa-4.0",
+    }
+    license_tag = license_tags.get(str(slug).strip().lower(), "other")
+
+    size_category = None
+    if coco_stats is not None:
+        size_category = coco_stats.get("size_category")
+
+    # Hugging Face dataset card metadata (YAML front-matter).
+    # Keep it conservative to avoid mislabeling: we do NOT claim an SPDX license for the original datasets.
+    # If you know the exact original license tag(s), update `license_tags` above.
+    meta_lines = [
+        "---",
+        f"pretty_name: {pretty_name}",
+        f"license: {license_tag}",
+        "source_datasets:",
+        "- extended",
+        "annotations_creators:",
+        "- other",
+        "task_categories:",
+        "- image-segmentation",
+        "task_ids:",
+        "- instance-segmentation",
+    ]
+    if size_category:
+        meta_lines.extend(["size_categories:", f"- {size_category}"])
+    meta_lines.extend(["---", ""])
+    meta = "\n".join(meta_lines)
+
+    def _fmt_gb(nbytes: int) -> str:
+        return f"{float(nbytes) / 1024 / 1024 / 1024:.2f} GB"
+
+    artifacts_section = ""
+    if artifacts:
+        rows = ["| file | sha256 | size |", "|---|---|---|"]
+        for fn, sha, nbytes in artifacts:
+            rows.append(f"| `{fn}` | `{sha}` | {_fmt_gb(int(nbytes))} |")
+        artifacts_section = "\n".join(["## Files", "", *rows, ""])
+
+    stats_section = ""
+    if coco_stats and coco_stats.get("splits"):
+        rows = ["| split | images | annotations |", "|---|---:|---:|"]
+        splits = coco_stats.get("splits") or {}
+        for split in ("train", "val", "test"):
+            if split not in splits:
+                continue
+            s = splits[split]
+            rows.append(f"| `{split}` | {int(s.get('images') or 0)} | {int(s.get('annotations') or 0)} |")
+        rows.append(f"| **total** | **{int(coco_stats.get('total_images') or 0)}** | **{int(coco_stats.get('total_annotations') or 0)}** |")
+        stats_section = "\n".join(["## Statistics (COCO)", "", *rows, ""])
+
+    body = "\n".join(
+        [
+            f"# {repo_id}",
+            "",
+            f"This repository hosts the processed dataset files for **WPRF_open** (`{slug}`).",
+            "",
+            "## Summary",
+            "",
+            "- Content: RGB images + instance segmentation annotations in COCO format.",
+            "- Packaging: zip artifacts (for robust download & integrity check).",
+            "",
+        ]
     )
+
+    layout = "\n".join(
+        [
+            "## Layout",
+            "",
+            "After downloading and extracting the zip file(s), the dataset root is:",
+            "",
+            "```",
+            "<dataset_root>/",
+            "  images/{train,val,test}/...           # `val` is optional",
+            "  annotations/instances_{train,val,test}.json  # `val` is optional",
+            "```",
+            "",
+        ]
+    )
+
+    notes = "\n".join(
+        [
+            "",
+            "## Notes",
+            "",
+            "- This dataset is provided for research use.",
+            "- Please check the original dataset license/terms before redistribution.",
+            "- The Hugging Face Dataset Viewer may be unavailable because the data is distributed as zip artifacts.",
+            "",
+        ]
+    )
+    return meta + body + artifacts_section + stats_section + layout + notes
 
 
 def _hf_upload_dir(*, local_dir: Path, repo_id: str) -> None:
@@ -187,6 +339,11 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--dataset", type=str, default="", help="只发布一个数据集（slug），默认发布全部")
     p.add_argument("--pack-only", action="store_true", help="只打包不上传（便于先检查产物）")
     p.add_argument("--upload", action="store_true", help="执行上传（默认不上传）")
+    p.add_argument(
+        "--upload-card-only",
+        action="store_true",
+        help="只更新并上传数据集卡片 README.md（含 YAML metadata），不重新打包/不重新上传 zip。",
+    )
     return p.parse_args()
 
 
@@ -219,22 +376,54 @@ def main() -> None:
 
     if args.upload and args.pack_only:
         raise SystemExit("--pack-only 与 --upload 不能同时使用")
+    if args.upload_card_only and args.pack_only:
+        raise SystemExit("--upload-card-only 与 --pack-only 不能同时使用")
+    if args.upload_card_only:
+        # 语义上该选项就应该执行上传
+        args.upload = True
 
     if not args.pack_only and not args.upload:
         print("[WARN] 默认只打包（不上传）。若要上传，请加 --upload。", file=sys.stderr)
 
     for ds in selected:
+        out = (work_dir / ds.slug).resolve()
+        if args.upload_card_only and out.exists():
+            # card-only 模式确保不会误上传旧的 zip 产物
+            shutil.rmtree(out, ignore_errors=True)
+        out.mkdir(parents=True, exist_ok=True)
+
+        artifacts_for_card: Optional[List[Tuple[str, str, int]]] = None
+        coco_stats = None
+
+        if args.upload_card_only:
+            # Best-effort: if source dataset exists locally, add stats in the card.
+            src_try = ds.src_root
+            if not src_try.is_absolute():
+                src_try = (source_root / src_try).resolve()
+            if src_try.is_dir():
+                coco_stats = _collect_coco_stats(src_try)
+            (out / "README.md").write_text(
+                _dataset_card_text(slug=ds.slug, repo_id=ds.repo_id, artifacts=None, coco_stats=coco_stats),
+                encoding="utf-8",
+            )
+            _hf_upload_dir(local_dir=out, repo_id=ds.repo_id)
+            print(f"[OK] uploaded card to {ds.repo_id}")
+            continue
+
         src = ds.src_root
         if not src.is_absolute():
             src = (source_root / src).resolve()
         _validate_dataset_contract(src)
 
-        out = (work_dir / ds.slug).resolve()
-        out.mkdir(parents=True, exist_ok=True)
-
         parts = _pack_to_parts(src_root=src, out_dir=out, max_part_bytes=max_part_bytes)
         _write_sha256sums(parts, out / "SHA256SUMS.txt")
-        (out / "README.md").write_text(_dataset_card_text(slug=ds.slug, repo_id=ds.repo_id), encoding="utf-8")
+
+        artifacts_for_card = [(p.name, _sha256(p), int(p.stat().st_size)) for p in parts]
+        coco_stats = _collect_coco_stats(src)
+        (out / "README.md").write_text(
+            _dataset_card_text(slug=ds.slug, repo_id=ds.repo_id, artifacts=artifacts_for_card, coco_stats=coco_stats),
+            encoding="utf-8",
+        )
 
         print(f"[OK] packed {ds.slug} -> {out}")
         for p in parts:
