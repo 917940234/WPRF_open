@@ -71,11 +71,14 @@ def _select_zip_filenames_from_sha256sums(mapping: Dict[str, str]) -> Tuple[str,
     zips = sorted([fn for fn in mapping.keys() if fn.lower().endswith(".zip")])
     if not zips:
         return ()
-    if "data.zip" in zips:
-        return ("data.zip",)
-    parts = [fn for fn in zips if fn.startswith("data_part") and fn.lower().endswith(".zip")]
+    has_data_zip = "data.zip" in zips
+    parts = sorted([fn for fn in zips if fn.startswith("data_part") and fn.lower().endswith(".zip")])
     if parts:
-        return tuple(sorted(parts))
+        if has_data_zip:
+            return tuple(["data.zip", *parts])
+        return tuple(parts)
+    if has_data_zip:
+        return ("data.zip",)
     return tuple(zips)
 
 
@@ -123,20 +126,20 @@ def _download_zip_artifacts(*, spec: DatasetSpec) -> Tuple[Tuple[Path, Optional[
             out.append((p, sha_map.get(name)))
         return tuple(out)
 
-    # Try data.zip first.
+    data_zip: Optional[Path] = None
     try:
-        p = Path(
+        data_zip = Path(
             hf_hub_download(
                 repo_id=spec.repo_id,
                 repo_type="dataset",
                 filename="data.zip",
             )
         )
-        return ((p, None),)
     except Exception:
-        pass
+        data_zip = None
 
     parts = []
+    found_any = False
     for i in range(1, 100):
         name = f"data_part{i:02d}.zip"
         try:
@@ -148,8 +151,16 @@ def _download_zip_artifacts(*, spec: DatasetSpec) -> Tuple[Tuple[Path, Optional[
                 )
             )
             parts.append((p, None))
+            found_any = True
         except Exception:
-            break
+            if found_any:
+                break
+            continue
+
+    if data_zip is not None:
+        if parts:
+            return tuple([(data_zip, None), *parts])
+        return ((data_zip, None),)
     if parts:
         return tuple(parts)
 

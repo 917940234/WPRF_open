@@ -95,7 +95,7 @@ def _pack_to_parts(
     zpath: Optional[Path] = None
 
     def _open_part(i: int) -> Tuple[zipfile.ZipFile, Path]:
-        name = "data.zip" if i == 1 else f"data_part{i:02d}.zip"
+        name = f"data_part{i:02d}.zip"
         p = (out_dir / name).resolve()
         if p.exists():
             p.unlink()
@@ -117,11 +117,12 @@ def _pack_to_parts(
 
     zf.close()
     parts.append(zpath)  # type: ignore[arg-type]
-    # If only one part and it's named data_part01.zip, rename it back to data.zip (keep convention)
-    if len(parts) == 1 and parts[0].name != "data.zip":
+    # If only one part, rename it back to data.zip (keep convention for single-zip datasets)
+    if len(parts) == 1:
         single = parts[0]
         target = single.with_name("data.zip")
-        single.rename(target)
+        if single.name != target.name:
+            single.rename(target)
         parts = [target]
     return parts
 
